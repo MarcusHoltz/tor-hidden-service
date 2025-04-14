@@ -16,18 +16,21 @@ You can use this to quickly share a service to a friend, client, or even your fu
 
 ## 1-up-tor-onion-address script
 
-[This script](https://github.com/MarcusHoltz/tor-hidden-service/blob/main/1-up-tor-onion-address.sh) sets up **one** service that will be available through a [Tor .onion address](https://en.wikipedia.org/wiki/.onion).
+[The 1-up-tor-onion-address.sh script](https://github.com/MarcusHoltz/tor-hidden-service/blob/main/1-up-tor-onion-address.sh) sets up **one** service that will be available through a [Tor .onion address](https://en.wikipedia.org/wiki/.onion).
 
 > This service is only available through the Tor network
 {: .prompt-info }
 
 This is intended as a demonstration. I hope you're able to learn and enjoy using. If you'd like more information head over to the [Holtzweb Blog post](https://blog.holtzweb.com/posts/tor-network-hidden-service-vanity-website-setup-with-docker/).
 
-- [1-up-tor-onion-address.sh](https://raw.githubusercontent.com/MarcusHoltz/tor-hidden-service/refs/heads/main/1-up-tor-onion-address.sh)
+
+* * *
+
+Download and run with:
 
 ```bash
 
-wget https://github.com/MarcusHoltz/tor-hidden-service/archive/refs/heads/main.zip -O tor-hidden-service-repo.zip && unzip tor-hidden-service-repo.zip && cd tor-hidden-service-main
+wget https://github.com/MarcusHoltz/tor-hidden-service/archive/refs/heads/main.zip -O tor-hidden-service-repo.zip && unzip tor-hidden-service-repo.zip && cd tor-hidden-service-main && chmod +x 1-up-tor-onion-address.sh && ./1-up-tor-onion-address.sh
 
 ```
 
@@ -37,11 +40,13 @@ wget https://github.com/MarcusHoltz/tor-hidden-service/archive/refs/heads/main.z
 
 ### Script Requirements
 
-This script will need sudo. It is required to set all of the directory permissions correctly. 
+[The 1-up-tor-onion-address.sh script](https://github.com/MarcusHoltz/tor-hidden-service/blob/main/1-up-tor-onion-address.sh) will need `sudo`. 
+
+Sudo is required to set all of the directory permissions correctly. 
 
 You will then need docker installed to generate a vanity address and run the `docker-compose.yml` file that starts up Tor.
 
-The script is only intended to prepare the environment we're using with Docker.
+[The 1-up-tor-onion-address.sh script](https://github.com/MarcusHoltz/tor-hidden-service/blob/main/1-up-tor-onion-address.sh) is only intended to prepare the environment we're using with Docker.
 
 
 
@@ -49,7 +54,7 @@ The script is only intended to prepare the environment we're using with Docker.
 
 ### Changes the Script makes
 
-The script sets up two directories, a file, and optionally a vanity address.
+[The 1-up-tor-onion-address.sh script](https://github.com/MarcusHoltz/tor-hidden-service/blob/main/1-up-tor-onion-address.sh) sets up two directories, a file, and optionally a vanity address.
 
 
 #### Two Directories
@@ -399,3 +404,20 @@ Want to know more about this script? How about a breakdown of the script's logic
 ```
 </details>
 
+
+
+* * *
+
+## Uninstall
+
+How do you stop the Tor network and remove this demonstration? 
+
+- To uninstall, delete the directory (tor-hidden-service-main) you created for this demonstration (you may have to use sudo) and run the following to remove the docker container:
+
+```bash
+
+docker stop $(docker ps -a | grep tor-hidden-service | awk '{print $1}') 2>/dev/null && docker rm $(docker ps -a | grep tor-hidden-service | awk '{print $1}') 2>/dev/null
+
+```
+
+- Done!
