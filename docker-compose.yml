@@ -1,0 +1,43 @@
+---
+services:
+  tor-hidden-service:
+    image: alpine:latest
+    container_name: tor-hidden-service
+    restart: unless-stopped
+    volumes:
+      # Mount tor configuration directory to host
+      - ./tor_config:/etc/tor
+      # Mount tor data directory to host
+      - ./tor_data:/var/lib/tor
+    command: >
+      sh -c "
+        # Install tor from Alpine repositories
+        apk add --no-cache tor &&
+        
+        # Ensure proper permissions for directories
+        chmod 700 /var/lib/tor &&
+        chown -R tor:tor /var/lib/tor &&
+        
+        # Make sure hidden service directory exists
+        mkdir -p /var/lib/tor/hidden_service &&
+        chmod 700 /var/lib/tor/hidden_service &&
+        chown -R tor:tor /var/lib/tor/hidden_service &&
+        
+        # Make sure keys have proper permissions
+        if [ -f /var/lib/tor/hidden_service/hs_ed25519_secret_key ]; then
+          chmod 600 /var/lib/tor/hidden_service/hs_ed25519_secret_key &&
+          chown tor:tor /var/lib/tor/hidden_service/hs_ed25519_secret_key;
+        fi &&
+        
+        if [ -f /var/lib/tor/hidden_service/hs_ed25519_public_key ]; then
+          chmod 600 /var/lib/tor/hidden_service/hs_ed25519_public_key &&
+          chown tor:tor /var/lib/tor/hidden_service/hs_ed25519_public_key;
+        fi &&
+        
+        # Set proper permissions for torrc
+        chown root:tor /etc/tor/torrc &&
+        chmod 644 /etc/tor/torrc &&
+        
+        # Run tor as the tor user
+        su tor -s /bin/sh -c 'tor -f /etc/tor/torrc'
+      "
