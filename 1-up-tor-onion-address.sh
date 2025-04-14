@@ -226,16 +226,43 @@ create_torrc() {
         # Edit your torrc here - under this text
         echo "# Tor configuration file
         DataDirectory /var/lib/tor
-        
-        # Hidden service configuration
+
+        # Hidden Service Core Configuration
         HiddenServiceDir /var/lib/tor/hidden_service/
         HiddenServicePort $VIRTUAL_PORT $HOST_IP:$HOST_PORT
-        
-        # Log configuration
+
+        # Force v3 onion services which have better security properties than v2
+        HiddenServiceVersion 3
+
+        # Critical Security Additions
+        HiddenServiceSingleHopMode 0             
+        HiddenServiceNonAnonymousMode 0          
+
+        # Anti-fingerprinting measures
+        AvoidDiskWrites 1                        
+        DisableDebuggerAttachment 1              
+        ConnectionPadding 1                      
+        ReducedConnectionPadding 0               
+        CircuitPadding 1                         
+        ReducedCircuitPadding 0                  
+
+        # Hardware acceleration introduces fingerprintable artifacts
+        HardwareAccel 0
+
+        # Log configuration - minimal logging for security
         Log notice stdout
-        
-        # Dont promote to directory listings
-        HiddenServiceVersion 3" | sudo tee tor_config/torrc > /dev/null
+
+        # Circuit reliability and security settings
+        NumEntryGuards 4                
+        HeartbeatPeriod 30 minutes      
+        NumDirectoryGuards 3            
+        MaxClientCircuitsPending 32     
+        KeepalivePeriod 60 seconds      
+
+        # Additional security hardening
+        StrictNodes 1                   
+        ControlPortWriteToFile ""       
+        CookieAuthentication 0" | sudo tee tor_config/torrc > /dev/null
 
     # Explaining what happened with torrc
         echo -e "\n\033[1mtorrc\033[0m created with hidden service (port ${VIRTUAL_PORT}) pointing to ${HOST_IP}:${HOST_PORT}\n"
