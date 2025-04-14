@@ -40,13 +40,13 @@ wget https://github.com/MarcusHoltz/tor-hidden-service/archive/refs/heads/main.z
 
 ### Script Requirements
 
-[The 1-up-tor-onion-address.sh script](https://github.com/MarcusHoltz/tor-hidden-service/blob/main/1-up-tor-onion-address.sh) will need `sudo`. 
+The [1-up-tor-onion-address.sh](https://github.com/MarcusHoltz/tor-hidden-service/blob/main/1-up-tor-onion-address.sh) script will need `sudo`. 
 
 Sudo is required to set all of the directory permissions correctly. 
 
 You will then need docker installed to generate a vanity address and run the `docker-compose.yml` file that starts up Tor.
 
-[The 1-up-tor-onion-address.sh script](https://github.com/MarcusHoltz/tor-hidden-service/blob/main/1-up-tor-onion-address.sh) is only intended to prepare the environment we're using with Docker.
+The [1-up-tor-onion-address.sh](https://github.com/MarcusHoltz/tor-hidden-service/blob/main/1-up-tor-onion-address.sh) script is only intended to prepare the environment we're using with Docker.
 
 
 
@@ -54,7 +54,7 @@ You will then need docker installed to generate a vanity address and run the `do
 
 ### Changes the Script makes
 
-[The 1-up-tor-onion-address.sh script](https://github.com/MarcusHoltz/tor-hidden-service/blob/main/1-up-tor-onion-address.sh) sets up two directories, a file, and optionally a vanity address.
+The [1-up-tor-onion-address.sh](https://github.com/MarcusHoltz/tor-hidden-service/blob/main/1-up-tor-onion-address.sh) script sets up two directories, a file, and optionally a vanity address.
 
 
 #### Two Directories
@@ -243,7 +243,7 @@ Click to expand and take a look at the 6 character example vanities below:
 
 Thanks to the work on the [cathugger/mkp224o](https://github.com/cathugger/mkp224o) repository, we're able to generate vanity address for tor onion v3 (ed25519) hidden services.
 
-- Specifically, the script will run: `docker run ghcr.io/cathugger/mkp224o:master -n 3 <your_vanity_name>`
+- Specifically, the [1-up-tor-onion-address.sh](https://github.com/MarcusHoltz/tor-hidden-service/blob/main/1-up-tor-onion-address.sh) script will run: `docker run ghcr.io/cathugger/mkp224o:master -n 3 <your_vanity_name>`
 
 - It will generate `3` .onion addresses that begin with your vanity name, allowing you to select a favorite.
 
@@ -252,7 +252,7 @@ Thanks to the work on the [cathugger/mkp224o](https://github.com/cathugger/mkp22
 
 ### Can't I just use my own .onion address
 
-Yes! This script will prompt you to use your own, you just have to provide the path.
+Yes! The [1-up-tor-onion-address.sh](https://github.com/MarcusHoltz/tor-hidden-service/blob/main/1-up-tor-onion-address.sh) script will prompt you to use your own, you just have to provide the path.
 
 
 #### Instructions for Using Bringing Your Own Vanity Tor Address:
@@ -266,7 +266,7 @@ Yes! This script will prompt you to use your own, you just have to provide the p
    - `hs_ed25519_public_key` - Your public key
 
 
-2. After the script completes, verify your hidden service is correct:
+2. After the [1-up-tor-onion-address.sh](https://github.com/MarcusHoltz/tor-hidden-service/blob/main/1-up-tor-onion-address.sh) script completes, verify your hidden service is correct:
 
 ```bash
 
@@ -283,11 +283,11 @@ You will also need a service to provide to the .onion address.
 
 This can be anything. It can be another docker container, a python web server on your laptop, your favorite IoT device, whatever!
 
-You will just need to give the script:
+You will just need to give The [1-up-tor-onion-address.sh](https://github.com/MarcusHoltz/tor-hidden-service/blob/main/1-up-tor-onion-address.sh) script:
 
-- The IP or Hostname of the service you're sending to the Tor network.
+- The `IP` or `Hostname` of the service you're sending to the Tor network.
 
-- The port for the service to forward over the .onion address.
+- The `Port` for the service to forward over the .onion address.
 
 - ONLY ONE SERVICE!!!    --> tor_data/hidden_service/
 
@@ -303,7 +303,7 @@ The `torrc` file lets you define `HiddenServiceDir` and `HiddenServicePort` dire
 
 * * *
 
-## The 1-up Tor Script uses two directories
+## The 1-up-tor-onion-address.sh script uses two directories
 
 File permissions are critical for Tor hidden services:
    - Directories need 700 permissions (drwx------)
@@ -327,11 +327,11 @@ The Tor user (not root) must own all these files inside the container
 
 ## Want to know more?
 
-Want to know more about this script? How about a breakdown of the script's logic!
+Want to know more about the [1-up-tor-onion-address.sh](https://github.com/MarcusHoltz/tor-hidden-service/blob/main/1-up-tor-onion-address.sh) script? How about a breakdown of the script's logic!
 
 * * *
 
-### Take a look at the flow of the script
+### Take a look at the flow of the 1-up-tor-onion-address.sh script
 
 <details>
 
