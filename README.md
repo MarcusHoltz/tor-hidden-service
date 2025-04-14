@@ -11,7 +11,6 @@ You can use this to quickly share a service to a friend, client, or even your fu
 > A Tor hidden service does not need your server to have open ports or port forwarding - because it does not accept direct inbound connections from the public internet. Instead, both the client and the hidden service connect outbound to the Tor network, establishing circuits to special relays called introduction and rendezvous points. All communication is routed through these Tor relays, so as long as your server can make outbound connections to the Tor network, it can host a hidden service!
 
 
-
 * * *
 
 ## 1-up-tor-onion-address script
@@ -19,7 +18,6 @@ You can use this to quickly share a service to a friend, client, or even your fu
 [The 1-up-tor-onion-address.sh script](https://github.com/MarcusHoltz/tor-hidden-service/blob/main/1-up-tor-onion-address.sh) sets up **one** service that will be available through a [Tor .onion address](https://en.wikipedia.org/wiki/.onion).
 
 > This service is only available through the Tor network
-{: .prompt-info }
 
 This is intended as a demonstration. I hope you're able to learn and enjoy using. If you'd like more information head over to the [Holtzweb Blog post](https://blog.holtzweb.com/posts/tor-network-hidden-service-vanity-website-setup-with-docker/).
 
@@ -36,6 +34,7 @@ wget https://github.com/MarcusHoltz/tor-hidden-service/archive/refs/heads/main.z
 
 ![1-up Tor Onion Address Script for a Tor Hidden Service](https://raw.githubusercontent.com/MarcusHoltz/marcusholtz.github.io/refs/heads/main/assets/img/posts/1-up-tor-script-hidden-onion-service.gif)
 
+
 * * *
 
 ### Script Requirements
@@ -47,7 +46,6 @@ Sudo is required to set all of the directory permissions correctly.
 You will then need docker installed to generate a vanity address and run the `docker-compose.yml` file that starts up Tor.
 
 The [1-up-tor-onion-address.sh](https://github.com/MarcusHoltz/tor-hidden-service/blob/main/1-up-tor-onion-address.sh) script is only intended to prepare the environment we're using with Docker.
-
 
 
 * * *
@@ -134,7 +132,6 @@ Vanity Characters : Approximate Generation Time
 11 : 32,768 years
 12 : 1 million years
 ```
-
 
 
 * * *
@@ -322,12 +319,12 @@ The Tor user (not root) must own all these files inside the container
 - Use [Tor Browser](https://support.torproject.org/)
 
 
-
 * * *
 
 ## Want to know more?
 
 Want to know more about the [1-up-tor-onion-address.sh](https://github.com/MarcusHoltz/tor-hidden-service/blob/main/1-up-tor-onion-address.sh) script? How about a breakdown of the script's logic!
+
 
 * * *
 
@@ -403,7 +400,6 @@ Want to know more about the [1-up-tor-onion-address.sh](https://github.com/Marcu
 
 ```
 </details>
-
 
 
 * * *
