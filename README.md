@@ -295,7 +295,7 @@ You will just need to give The [1-up-tor-onion-address.sh](https://github.com/Ma
 
 ### Sample Service
 
-If you really dont have anything to use as a service, you can create a quick HTTP server with bash:
+If you really dont have anything to use as a service, you can send an HTTP response header with bash:
 
 - Creates an HTTP server using `netcat`
 
