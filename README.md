@@ -1,4 +1,4 @@
-# Create a Tor network hidden service with a vanity .onion address with Docker
+# Create a Tor network hidden service using a vanity .onion address with Docker
 
 * * *
 
