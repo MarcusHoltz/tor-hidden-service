@@ -220,7 +220,7 @@ setup_vanity_address() {
 
 #  [main] -- Creates the torrc configuration - MAKE EDITS TO YOUR TORRC HERE !!!!!!!
 create_torrc() {
-    # Create torrc configuration if it doesn't exist - EDIT YOUR TORRC AFTER << EOF
+    # Create torrc configuration if it doesn't exist - EDIT YOUR YOUR TORRC HERE !!!
     if [[ ! -f tor_config/torrc ]]; then
         echo -e "\nCreating new \033[1mtorrc\033[0m configuration...\n"
         # Edit your torrc here - under this text
