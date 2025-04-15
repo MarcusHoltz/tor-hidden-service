@@ -71,7 +71,7 @@ and
 
 #### A file: torrc
 
-The [torrc file](https://support.torproject.org/glossary/torrc/) contains all the settings Tor uses. 
+A [torrc file](https://support.torproject.org/glossary/torrc/) contains all the settings Tor uses. 
 
 You need sudo privs for:
 
