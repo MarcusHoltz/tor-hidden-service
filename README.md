@@ -293,6 +293,25 @@ You will just need to give The [1-up-tor-onion-address.sh](https://github.com/Ma
 
 * * *
 
+### Sample Service
+
+If you really dont have anything to use as a service, you can create a quick HTTP server with bash:
+
+- Creates an HTTP server using `netcat`
+
+- Server will respond on `port 5432`
+
+- Exit the netcat command with: `ctrl + c`
+
+```bash
+
+echo -e "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n<p>Works for me</p><p>$(date)</p>" | nc -l -p 5432
+
+```
+
+
+* * *
+
 ## Torrc is important
 
 The `torrc` file lets you define `HiddenServiceDir` and `HiddenServicePort` directives, these tell Tor where to store your service you're sending to the Tor network's keys and what ports to forward, making your .onion site accessible.
