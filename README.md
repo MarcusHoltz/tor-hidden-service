@@ -4,7 +4,7 @@
 
 ## Using Tor to host an .onion service
 
-The purpose of this repo is to give someone a chance to test out hosting an .onion hidden service.
+The purpose of this repo is to give someone a chance to test out hosting an [.onion hidden service](https://community.torproject.org/onion-services/setup/).
 
 You can use this to quickly share a service to a friend, client, or even your future self.
 
