@@ -309,6 +309,8 @@ echo -e "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n<p>Works for me</p><p
 
 ```
 
+>  or add an `&` on the end to the command - to let in run in the background. Exit from the background with: `kill $(ps -ef | grep [5]432 | awk '{print $2'})`
+
 
 * * *
 
