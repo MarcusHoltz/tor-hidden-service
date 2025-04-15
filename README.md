@@ -423,6 +423,6 @@ docker stop $(docker ps -a | grep tor-hidden-service | awk '{print $1}') 2>/dev/
 
 ## Why the name 1-up-tor-onion-address script?
 
-The 1-up-tor-onion-address.sh script sets `up` `one` service that will be available through a `tor .onion address`.
+It sets `up` only `one` service, available through a `tor .onion address`.
 
 
