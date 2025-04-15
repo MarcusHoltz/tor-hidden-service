@@ -28,7 +28,7 @@ Download and run with:
 
 ```bash
 
-wget https://github.com/MarcusHoltz/tor-hidden-service/archive/refs/heads/main.zip -O tor-hidden-service-repo.zip && unzip tor-hidden-service-repo.zip && cd tor-hidden-service-main && chmod +x 1-up-tor-onion-address.sh && ./1-up-tor-onion-address.sh
+wget https://github.com/MarcusHoltz/tor-hidden-service/archive/refs/heads/main.zip -O tor-hidden-service-repo.zip && unzip tor-hidden-service-repo.zip && rm tor-hidden-service-repo.zip && cd tor-hidden-service-main && chmod +x 1-up-tor-onion-address.sh && ./1-up-tor-onion-address.sh
 
 ```
 
