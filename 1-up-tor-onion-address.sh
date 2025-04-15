@@ -155,14 +155,6 @@ if ! sudo test -f "$VANITY_DIR/hostname" || \
     exit 1
 fi
 
-
-#    # Check for required files as long as this user has directory permissions
-#    if [[ ! -f "$VANITY_DIR/hostname" ]] || [[ ! -f "$VANITY_DIR/hs_ed25519_secret_key" ]] || [[ ! -f "$VANITY_DIR/hs_ed25519_public_key" ]]; then
-#        echo "Error: Missing required key files in $VANITY_DIR!"
-#        echo "Need: hostname, hs_ed25519_secret_key, and hs_ed25519_public_key"
-#        exit 1
-#    fi
-
     # Double check - create hidden_service directory and set permissions
     setup_hidden_service_dir
     
