@@ -86,6 +86,13 @@ You need sudo privs for:
 
 * * *
 
+#### Automatic .gitignore addition
+
+Just a heads up, this script automatically creates or appends to `.gitignore` to prevent any accidental key exposure to version control. So if you see that file and you dont use git, you may remove it.
+
+
+* * *
+
 ## Vanity Name Creation
 
 A [vanity address](https://community.torproject.org/onion-services/advanced/vanity-addresses/) is an onion address that starts with a pre-chosen number of characters, usually a meaningful name related to a specific Onion Service. 
@@ -102,9 +109,9 @@ This has some advantages:
 
 - It is easy for Onion Services operators to debug their logs and know which services have errors.
 
-- Anyone else is very unlikely to come up with the exact key from the example above, but they may be able to find a similar key - one beginng with the same few letters. 
+- Anyone else is very unlikely to come up with the exact key from the example above, but they may be able to find a similar key - one beginning with the same few letters. 
 
-  - The longer the vanity name length, the less likly it is to have a forgery made.
+  - The longer the vanity name length, the less likely it is to have a forgery made.
 
 
 * * *
@@ -434,6 +441,12 @@ Want to know more about the [1-up-tor-onion-address.sh](https://github.com/Marcu
 └──────────┬────────────┘
            ▼
 ┌───────────────────────┐
+│  create_gitignore()   │
+│  - Protect keys       │
+│  - Prevent commits    │
+└──────────┬────────────┘
+           ▼
+┌───────────────────────┐
 │get_network_settings() │
 │  - Collect:           │
 │    • HOST_IP          │
@@ -450,6 +463,7 @@ Want to know more about the [1-up-tor-onion-address.sh](https://github.com/Marcu
 │  Generate New Address │      │  Use Existing Keys    │
 │  - mkp224o Docker     │      │  - Validate dir       │
 │  - vanity name input  │      │  - Verify key files   │
+│  - Time estimates     │      │                       │
 └──────────┬────────────┘      └──────────┬────────────┘
            ▼                              ▼
 ┌───────────────────────┐      ┌───────────────────────┐
@@ -476,6 +490,7 @@ Want to know more about the [1-up-tor-onion-address.sh](https://github.com/Marcu
 │   create_torrc()      │
 │  - HiddenServicePort  │
 │  - DataDirectory      │
+│  - DoS/PoW config     │
 └──────────┬────────────┘
            ▼
 ┌───────────────────────┐
