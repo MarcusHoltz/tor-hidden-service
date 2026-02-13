@@ -52,6 +52,21 @@ The [1-up-tor-onion-address.sh](https://github.com/MarcusHoltz/tor-hidden-servic
 
 * * *
 
+### Unattended Mode (Optional)
+
+The script supports automated execution for CI/CD pipelines and reproducible deployments. Instead of answering prompts interactively, you can pre-configure all settings using environment variables.
+
+An `env.example` file is included as a template showing all available configuration options. Copy it to `.env` and set your values:
+
+```bash
+cp env.example .env
+nano .env
+./1-up-tor-onion-address.sh
+```
+
+
+* * *
+
 ### Changes the Script makes
 
 The [1-up-tor-onion-address.sh](https://github.com/MarcusHoltz/tor-hidden-service/blob/main/1-up-tor-onion-address.sh) script sets up directories, a file, optionally a vanity address, and optionally client authentication.
