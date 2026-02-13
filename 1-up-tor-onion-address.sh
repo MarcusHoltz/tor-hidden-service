@@ -3,6 +3,21 @@
 set -e
 
 ##########################################
+## Load Environment Variables from .env ##
+##########################################
+
+#  [main] -- Load environment variables from .env file if it exists
+load_env_file() {
+    if [[ -f .env ]]; then
+        echo "Loading environment variables from .env file..."
+        # Export variables from .env, ignoring comments and empty lines
+        set -a
+        source <(grep -v '^#' .env | grep -v '^$' | sed 's/\r$//')
+        set +a
+    fi
+}
+
+##########################################
 ## Sudo now and get Directories correct ##
 ##########################################
 
@@ -66,20 +81,33 @@ EOF
 
 #  [main] -- Function to collect configuration options from user
 get_network_settings() {
-    # Read-in IP address of the tor backend service
-    echo "Please enter the IP address to forward traffic to [default: 127.0.0.1]: "
-    read HOST_IP
-    HOST_IP=${HOST_IP:-127.0.0.1}
+    # Use environment variables if set, otherwise prompt user
+    if [[ -z "$HOST_IP" ]]; then
+        # Read-in IP address of the tor backend service
+        echo "Please enter the IP address to forward traffic to [default: 127.0.0.1]: "
+        read HOST_IP
+        HOST_IP=${HOST_IP:-127.0.0.1}
+    else
+        echo "Using HOST_IP from environment: $HOST_IP"
+    fi
 
-    # Read-in destination port of backend service
-    echo "What port on that IP address are you sending tor traffic to [default: 80]: "
-    read HOST_PORT
-    HOST_PORT=${HOST_PORT:-80}
+    if [[ -z "$HOST_PORT" ]]; then
+        # Read-in destination port of backend service
+        echo "What port on that IP address are you sending tor traffic to [default: 80]: "
+        read HOST_PORT
+        HOST_PORT=${HOST_PORT:-80}
+    else
+        echo "Using HOST_PORT from environment: $HOST_PORT"
+    fi
 
-    # Read-in what port people will use to connect your .onion address
-    echo "What is the port for the .onion address people will be hitting on the tor network [default: 80]: "
-    read VIRTUAL_PORT
-    VIRTUAL_PORT=${VIRTUAL_PORT:-80}
+    if [[ -z "$VIRTUAL_PORT" ]]; then
+        # Read-in what port people will use to connect your .onion address
+        echo "What is the port for the .onion address people will be hitting on the tor network [default: 80]: "
+        read VIRTUAL_PORT
+        VIRTUAL_PORT=${VIRTUAL_PORT:-80}
+    else
+        echo "Using VIRTUAL_PORT from environment: $VIRTUAL_PORT"
+    fi
 }
 
 ####################################
@@ -135,26 +163,40 @@ generate_vanity_address() {
     # Create the directory for generated keys
     sudo mkdir -p tor_config/vanity_keys
 
-    # Prompt the user for vanity name with length validation
-    while true; do
-        read -p "Enter a string (less than 9 characters) for your vanity address: " VANITY_NAME
+    # Use environment variable or prompt the user for vanity name with length validation
+    if [[ -z "$VANITY_NAME" ]]; then
+        while true; do
+            read -p "Enter a string (less than 9 characters) for your vanity address: " VANITY_NAME
 
-        # Check the length of the input with warning about generation time
-        if [[ ${#VANITY_NAME} -lt 10 ]]; then
-            echo "Your onion address will begin with:  $VANITY_NAME"
+            # Check the length of the input with warning about generation time
+            if [[ ${#VANITY_NAME} -lt 10 ]]; then
+                echo "Your onion address will begin with:  $VANITY_NAME"
 
-            show_generation_estimates ${#VANITY_NAME}
+                show_generation_estimates ${#VANITY_NAME}
 
-            echo "Generating 3 addresses... this may take some time depending on the length."
-            break
-        else
-            echo ""
-            echo "WARNING: 7 characters takes up to a week on old hardware."
-            echo "         8 characters can take 7 months on an old laptop."
-            echo "         Please enter less than 9 characters."
-            echo ""
+                echo "Generating 3 addresses... this may take some time depending on the length."
+                break
+            else
+                echo ""
+                echo "WARNING: 7 characters takes up to a week on old hardware."
+                echo "         8 characters can take 7 months on an old laptop."
+                echo "         Please enter less than 9 characters."
+                echo ""
+            fi
+        done
+    else
+        echo "Using VANITY_NAME from environment: $VANITY_NAME"
+        
+        # Validate length
+        if [[ ${#VANITY_NAME} -ge 10 ]]; then
+            echo "ERROR: VANITY_NAME must be less than 10 characters. Current length: ${#VANITY_NAME}"
+            exit 1
         fi
-    done
+        
+        echo "Your onion address will begin with:  $VANITY_NAME"
+        show_generation_estimates ${#VANITY_NAME}
+        echo "Generating 3 addresses... this may take some time depending on the length."
+    fi
 
     # Run the mkp224o Docker container to generate keys into the tor_config/vanity_keys directory
     # Using -n 3 to generate multiple addresses to choose from
@@ -179,8 +221,18 @@ generate_vanity_address() {
         echo "$((i + 1)). $hostname"
     done
 
-    # Ask the user to select a directory
-    read -p "Enter the number of the address you want to use: " choice
+    # Use environment variable for selection or auto-select in unattended mode
+    if [[ -n "$VANITY_CHOICE" ]]; then
+        choice="$VANITY_CHOICE"
+        echo "Using VANITY_CHOICE from environment: $choice"
+    elif [[ "$UNATTENDED" == "true" || "$UNATTENDED" == "1" ]]; then
+        # In unattended mode, automatically select the first address
+        choice=1
+        echo "Unattended mode: Automatically selecting address #$choice"
+    else
+        # Ask the user to select a directory
+        read -p "Enter the number of the address you want to use: " choice
+    fi
 
     # Check if the choice is valid or just give them whatever's available
     if [[ "$choice" -ge 1 && "$choice" -le ${#onion_directories[@]} ]]; then
@@ -211,13 +263,18 @@ generate_vanity_address() {
 
 # Used in [setup_vanity_address] -- If user chooses to use EXISTING KEY, not a vanity key
 use_existing_keys() {
-    echo -e "Make sure this directory has allow permissions:\nEnter the directory path where your existing vanity keys are stored WITHOUT the trailing / \n e.g. /home/user/directory1/subdirectory "
-    echo ""
-    echo "Current directory: $(pwd)"
-    echo "Items in current directory: $(ls -m)"
-    echo ""
-    echo "Please provide full path to folder with files for existing .onion address:"
-    read VANITY_DIR
+    # Use environment variable or prompt for directory path
+    if [[ -z "$VANITY_DIR" ]]; then
+        echo -e "Make sure this directory has allow permissions:\nEnter the directory path where your existing vanity keys are stored WITHOUT the trailing / \n e.g. /home/user/directory1/subdirectory "
+        echo ""
+        echo "Current directory: $(pwd)"
+        echo "Items in current directory: $(ls -m)"
+        echo ""
+        echo "Please provide full path to folder with files for existing .onion address:"
+        read VANITY_DIR
+    else
+        echo "Using VANITY_DIR from environment: $VANITY_DIR"
+    fi
 
     # Validate the directory exists
     if [[ ! -d "$VANITY_DIR" ]]; then
@@ -229,8 +286,8 @@ use_existing_keys() {
     if ! sudo test -f "$VANITY_DIR/hostname" || \
        ! sudo test -f "$VANITY_DIR/hs_ed25519_secret_key" || \
        ! sudo test -f "$VANITY_DIR/hs_ed25519_public_key"; then
-        echo "Error: Missing required key files in $VANITY_DIR!"
-        echo "Need: hostname, hs_ed25519_secret_key, and hs_ed25519_public_key"
+        echo "Error: Required files not found in $VANITY_DIR!"
+        echo "Need: hostname, hs_ed25519_secret_key, hs_ed25519_public_key"
         exit 1
     fi
 
@@ -238,18 +295,61 @@ use_existing_keys() {
     setup_hidden_service_dir
 
     # Copy the EXISTING key files to the default 'hidden_service' directory - this requires sudo
+    echo "Copying keys from $VANITY_DIR..."
     sudo cp "$VANITY_DIR/hostname" tor_data/hidden_service/
     sudo cp "$VANITY_DIR/hs_ed25519_secret_key" tor_data/hidden_service/
     sudo cp "$VANITY_DIR/hs_ed25519_public_key" tor_data/hidden_service/
+
+    echo -e "\nExisting vanity address keys configured in:\n./tor_data/hidden_service/\n------------------------------------"
 
     # Congratulate user about the keys now in production
     echo -e "\n           ::: DONE :::\n"; sleep 2;
 }
 
 
-##########################
-## Directory scaffolding ##
-##########################
+############################################
+## Ask what type of address to configure ##
+############################################
+
+#  [main] -- Function to choose between vanity, random, or existing keys
+setup_vanity_address() {
+    # Use environment variable or prompt for address type
+    if [[ -z "$ADDRESS_TYPE" ]]; then
+        echo "Choose .onion address type:"
+        echo "  1. Generate new VANITY address"
+        echo "  2. Use EXISTING keys"
+        echo "  3. Generate RANDOM address (let Tor decide)"
+        echo ""
+        read -p "Enter your choice (1, 2, or 3) [default: 3]: " ADDRESS_TYPE
+        ADDRESS_TYPE=${ADDRESS_TYPE:-3}
+    else
+        echo "Using ADDRESS_TYPE from environment: $ADDRESS_TYPE"
+    fi
+
+    case $ADDRESS_TYPE in
+        1)
+            echo "Setting up vanity address..."
+            generate_vanity_address
+            ;;
+        2)
+            echo "Using existing keys..."
+            use_existing_keys
+            ;;
+        3)
+            echo "Will generate random address on first Tor startup..."
+            setup_hidden_service_dir
+            ;;
+        *)
+            echo "Invalid choice. Defaulting to random address generation."
+            setup_hidden_service_dir
+            ;;
+    esac
+}
+
+
+######################################
+## Setup the hidden service dir ##
+######################################
 
 # Used in [use_existing_keys]       -- prepare directory to recieve custom vanity .onion address
 # Used in [generate_vanity_address] -- prepare directory for an existing key and .onion address
@@ -278,33 +378,6 @@ setup_standard_address() {
     echo "Tor will generate your .onion address automatically when it starts."
     echo "The address will be available after running: docker compose up -d"
 
-}
-
-
-########################################
-## Setup the Persistent Onion Address ##
-########################################
-
-#  [main] -- This is the function that runs all the .onion address key and hostname moving around
-setup_vanity_address() {
-    echo "Do you want to use a vanity Tor address? (y/n) [default: n]: "
-    read USE_VANITY
-    USE_VANITY=${USE_VANITY:-n}
-
-    if [[ "$USE_VANITY" == "y" || "$USE_VANITY" == "Y" ]]; then
-        echo "Do you want to generate a new vanity address or use existing keys? (generate/existing) [default: generate]: "
-        read VANITY_OPTION
-        VANITY_OPTION=${VANITY_OPTION:-generate}
-
-        if [[ "$VANITY_OPTION" == "existing" ]]; then
-            use_existing_keys
-        else
-            generate_vanity_address
-        fi
-    else
-        # User chose NO to vanity address - setup standard address
-        setup_standard_address
-    fi
 }
 
 
@@ -385,13 +458,19 @@ generate_client_auth_keys() {
     echo "$public_key|$private_key"
 }
 
+
 #  [main] -- Setup client authentication for private .onion access
 setup_client_authentication() {
-    echo ""
-    echo -e "ENCRYPTION OPTION:"
-    echo -e "Do you want to enable client authentication to make your .onion site private? (y/n) [default: n]: "
-    read ENABLE_AUTH
-    ENABLE_AUTH=${ENABLE_AUTH:-n}
+    # Use environment variable or prompt for auth enablement
+    if [[ -z "$ENABLE_AUTH" ]]; then
+        echo ""
+        echo -e "ENCRYPTION OPTION:"
+        echo -e "Do you want to enable client authentication to make your .onion site private? (y/n) [default: n]: "
+        read ENABLE_AUTH
+        ENABLE_AUTH=${ENABLE_AUTH:-n}
+    else
+        echo "Using ENABLE_AUTH from environment: $ENABLE_AUTH"
+    fi
 
     # Initialize arrays for display later
     CLIENT_NAMES=()
@@ -401,9 +480,14 @@ setup_client_authentication() {
         sudo mkdir -p tor_data/hidden_service/authorized_clients
         sudo chmod 700 tor_data/hidden_service/authorized_clients
 
-        echo -e "How many different authorized client passwords to generate? [default: 1]: "
-        read NUM_CLIENTS
-        NUM_CLIENTS=${NUM_CLIENTS:-1}
+        # Use environment variable or prompt for number of clients
+        if [[ -z "$NUM_CLIENTS" ]]; then
+            echo -e "How many different authorized client passwords to generate? [default: 1]: "
+            read NUM_CLIENTS
+            NUM_CLIENTS=${NUM_CLIENTS:-1}
+        else
+            echo "Using NUM_CLIENTS from environment: $NUM_CLIENTS"
+        fi
 
         if ! [[ "$NUM_CLIENTS" =~ ^[0-9]+$ ]] || [ "$NUM_CLIENTS" -lt 1 ]; then
             NUM_CLIENTS=1
@@ -420,10 +504,32 @@ setup_client_authentication() {
         TEMP_DIR=$(mktemp -d)
         trap "rm -rf $TEMP_DIR" EXIT
 
+        # Parse CLIENT_NAMES array if provided (supports both array and space-separated string)
+        if [[ -n "$CLIENT_NAMES" ]]; then
+            # Convert space-separated string to array if needed
+            if [[ ! "$(declare -p CLIENT_NAMES 2>/dev/null)" =~ "declare -a" ]]; then
+                read -ra CLIENT_NAMES_ARRAY <<< "$CLIENT_NAMES"
+            else
+                CLIENT_NAMES_ARRAY=("${CLIENT_NAMES[@]}")
+            fi
+            echo "Using CLIENT_NAMES from environment: ${CLIENT_NAMES_ARRAY[*]}"
+        fi
+
         for ((i=1; i<=NUM_CLIENTS; i++)); do
-            echo "Enter name for client #$i [default: client$i]: "
-            read CLIENT_NAME
-            CLIENT_NAME=${CLIENT_NAME:-client$i}
+            # Priority order: CLIENT_NAMES array > CLIENT_NAME_N > CLIENT_NAME (single) > prompt
+            if [[ -n "${CLIENT_NAMES_ARRAY[$((i-1))]}" ]]; then
+                CLIENT_NAME="${CLIENT_NAMES_ARRAY[$((i-1))]}"
+                echo "Using client name from CLIENT_NAMES array: $CLIENT_NAME"
+            elif client_var_name="CLIENT_NAME_$i" && [[ -n "${!client_var_name}" ]]; then
+                CLIENT_NAME="${!client_var_name}"
+                echo "Using $client_var_name from environment: $CLIENT_NAME"
+            elif [[ -n "$CLIENT_NAME" && "$NUM_CLIENTS" -eq 1 ]]; then
+                echo "Using CLIENT_NAME from environment: $CLIENT_NAME"
+            else
+                echo "Enter name for client #$i [default: client$i]: "
+                read CLIENT_NAME
+                CLIENT_NAME=${CLIENT_NAME:-client$i}
+            fi
 
             cd "$TEMP_DIR"
             keys_output=$(generate_client_auth_keys "$CLIENT_NAME")
@@ -589,6 +695,7 @@ finalize_setup() {
 
 # Main function to orchestrate the entire process
 main() {
+    load_env_file
     check_sudo
     create_directories
     set_permissions
