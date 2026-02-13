@@ -19,6 +19,8 @@ You can use this to quickly share a service to a friend, client, or even your fu
 
 > This service is only available through the Tor network
 
+The script includes client authentication using X25519 cryptography to restrict access to authorized clients only (optional).
+
 This is intended as a demonstration. I hope you're able to learn and enjoy using. If you'd like more information head over to the [Holtzweb Blog post](https://blog.holtzweb.com/posts/tor-network-hidden-service-vanity-website-setup-with-docker/).
 
 
@@ -52,20 +54,22 @@ The [1-up-tor-onion-address.sh](https://github.com/MarcusHoltz/tor-hidden-servic
 
 ### Changes the Script makes
 
-The [1-up-tor-onion-address.sh](https://github.com/MarcusHoltz/tor-hidden-service/blob/main/1-up-tor-onion-address.sh) script sets up two directories, a file, and optionally a vanity address.
+The [1-up-tor-onion-address.sh](https://github.com/MarcusHoltz/tor-hidden-service/blob/main/1-up-tor-onion-address.sh) script sets up directories, a file, optionally a vanity address, and optionally client authentication.
 
 
-#### Two Directories
+#### Directories
 
 You need sudo privs for:
 
-- tor_config/vanity_keys/
-
-and
+- tor_config/
+  - vanity_keys/
+  - client_credentials/ (if authentication enabled)
 
 - tor_data/
+  - hidden_service/
+    - authorized_clients/ (if authentication enabled)
 
-> Those directories store the keys that are used for your .onion address. Kept safe from any normal user.
+> These directories store the keys for your .onion address and client authentication credentials. Kept safe from any normal user.
 
 
 
@@ -274,6 +278,59 @@ sudo cat tor_data/hidden_service/hostname
 
 * * *
 
+## Client Authentication (Optional)
+
+The script includes client authentication to make your .onion service private. And this is basically the best.
+
+
+* * *
+
+### How Client Authentication Works
+
+If you selected 'y', the script will:
+
+- Prompt for the number of authorized clients (generate as many users as you may need)
+
+- Generate unique X25519 key pairs for each client
+
+- Create `.auth` files in `tor_data/hidden_service/authorized_clients/`
+
+- Generate instruction files for each client in `tor_config/client_credentials/`
+
+
+* * *
+
+#### What are these Authorized Clients
+
+Each client is a key tied to a name:
+
+- A private key to add to their Tor configuration
+
+- Instructions for connecting to your service
+
+
+* * *
+
+### Revoking Client Access
+
+To revoke a client's tor secret address access:
+```bash
+sudo rm tor_data/hidden_service/authorized_clients/client_name.auth
+docker compose restart
+```
+
+* * *
+
+### Important Notes
+
+- Keep private keys secure
+- Share keys through encrypted channels only
+- Back up client credential files
+- Test access before distributing keys
+
+
+* * *
+
 ## What Service to put on Tor
 
 You will also need a service to provide to the .onion address. 
@@ -337,9 +394,9 @@ The Tor user (not root) must own all these files inside the container
 
 ## Browsers that find an onion service
 
-- Use [Brave Browser](https://support.brave.com/hc/en-us/articles/360018121491-What-is-a-Private-Window-with-Tor-Connectivity)
+- Use [Brave Browser](https://support.brave.com/hc/en-us/articles/360018121491-What-is-a-Private-Window-with-Tor-Connectivity) for day-to-day and occasional Tor services
 
-- Use [Tor Browser](https://support.torproject.org/)
+- Use [Tor Browser](https://support.torproject.org/) if you need easy client authentication to a Tor network
 
 
 * * *
@@ -409,6 +466,13 @@ Want to know more about the [1-up-tor-onion-address.sh](https://github.com/Marcu
 └──────────┬──────────────────────────────┘
            ▼
 ┌───────────────────────┐
+│  client_auth_setup()  │
+│  - Optional           │
+│  - Generate keys      │
+│  - Create .auth files │
+└──────────┬────────────┘
+           ▼
+┌───────────────────────┐
 │   create_torrc()      │
 │  - HiddenServicePort  │
 │  - DataDirectory      │
@@ -447,5 +511,3 @@ docker stop $(docker ps -a | grep tor-hidden-service | awk '{print $1}') 2>/dev/
 ## Why the name 1-up-tor-onion-address script?
 
 It sets `up` only `one` service, available through a `tor .onion address`.
-
-
