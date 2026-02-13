@@ -118,7 +118,7 @@ This has some advantages:
 
 ### Vanity Name Length
 
-You can only pick something, at max, 7 characters.
+You can only pick something, at max, 8 characters.
 
 > Why?
 
