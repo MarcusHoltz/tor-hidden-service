@@ -552,11 +552,11 @@ finalize_setup() {
             for i in "${!CLIENT_NAMES[@]}"; do
                 echo "Client: ${CLIENT_NAMES[$i]}"
                 echo "Private Key: ${CLIENT_KEYS[$i]}"
-                echo "Auth String: ${ONION_ADDR}:descriptor:x25519:${CLIENT_KEYS[$i]}"
+#                echo "Auth String: ${ONION_ADDR}:descriptor:x25519:${CLIENT_KEYS[$i]}"
                 echo ""
             done
         else
-            echo "Client credentials saved. Auth strings will be available after Tor generates your .onion address."
+            echo "Client credentials saved. Any private keys included. Tor must now generate your .onion address."
             echo ""
             for i in "${!CLIENT_NAMES[@]}"; do
                 echo "Client: ${CLIENT_NAMES[$i]}"
