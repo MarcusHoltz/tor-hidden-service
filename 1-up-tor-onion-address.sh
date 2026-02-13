@@ -24,8 +24,39 @@ create_directories() {
 #  [main] -- setting directory initial permissions
 set_permissions() {
     echo "Setting initial permissions..."
-    sudo chmod 755 tor_config  # Added sudo here
-    sudo chmod 700 tor_data    # Added sudo here
+    sudo chmod 755 tor_config
+    sudo chmod 700 tor_data
+}
+
+##################################
+## Security: Create .gitignore  ##
+##################################
+
+create_gitignore() {
+    local marker_start="# >>> Tor Hidden Service (auto-managed) >>>"
+    local marker_end="# <<< Tor Hidden Service (auto-managed) <<<"
+
+    # Ensure .gitignore exists
+    touch .gitignore
+
+    # Only add block if it doesn't already exist
+    if ! grep -q "$marker_start" .gitignore 2>/dev/null; then
+        cat >> .gitignore <<EOF
+
+$marker_start
+# Tor Hidden Service - Private Keys and Data
+tor_data/
+tor_config/vanity_keys/
+tor_config/client_credentials/
+*.key
+hs_ed25519_secret_key
+hs_ed25519_public_key
+hostname
+onions/
+$marker_end
+
+EOF
+    fi
 }
 
 
@@ -51,12 +82,54 @@ get_network_settings() {
     VIRTUAL_PORT=${VIRTUAL_PORT:-80}
 }
 
-
 ####################################
 ## Setup an .onion vanity address ##
 ####################################
 
-# Used in [setup_vanity_address] -- This is the work done to get the vanity address in place
+# Used in [setup_vanity_address] -- Estimate the work required to get the vanity address in place
+show_generation_estimates() {
+    local prefix_length=$1
+
+    echo ""
+    echo "Vanity Address Generation Time Estimates"
+    echo "========================================="
+
+    case $prefix_length in
+        1)
+            echo "Your 1-character prefix: Instant (milliseconds)"
+            ;;
+        2)
+            echo "Your 2-character prefix: Instant to seconds"
+            ;;
+        3)
+            echo "Your 3-character prefix: Seconds"
+            ;;
+        4)
+            echo "Your 4-character prefix: Seconds to 1 minute"
+            ;;
+        5)
+            echo "Your 5-character prefix: 1–5 minutes"
+            ;;
+        6)
+            echo "Your 6-character prefix: 30 minutes to 3 hours"
+            ;;
+        7)
+            echo "Your 7-character prefix: 1–4 days (depending on CPU)"
+            ;;
+        8)
+            echo "Your 8-character prefix: 1–4 months"
+            ;;
+        9)
+            echo -e "Your 9-character prefix: about a month and a \$1000 AWS bill."
+            ;;
+        *)
+            echo "Invalid length."
+            ;;
+    esac
+    echo ""
+}
+
+# Used in [setup_vanity_address] -- Read in and run docker mkp224o
 generate_vanity_address() {
 
     # Create the directory for generated keys
@@ -64,15 +137,22 @@ generate_vanity_address() {
 
     # Prompt the user for vanity name with length validation
     while true; do
-        read -p "Enter a string (less than 7 characters) for your vanity address: " VANITY_NAME
+        read -p "Enter a string (less than 9 characters) for your vanity address: " VANITY_NAME
 
         # Check the length of the input with warning about generation time
-        if [[ ${#VANITY_NAME} -lt 7 ]]; then
-            echo "Your onion address will begin with $VANITY_NAME"
+        if [[ ${#VANITY_NAME} -lt 10 ]]; then
+            echo "Your onion address will begin with:  $VANITY_NAME"
+
+            show_generation_estimates ${#VANITY_NAME}
+
             echo "Generating 3 addresses... this may take some time depending on the length."
             break
         else
-            echo -e "\n-----------------------------------------------------------------\n7 Characters takes a week, and 7 months for 8 characters.\nPlease enter less than 7 characters.\n-----------------------------------------------------------------\n"
+            echo ""
+            echo "WARNING: 7 characters takes up to a week on old hardware."
+            echo "         8 characters can take 7 months on an old laptop."
+            echo "         Please enter less than 9 characters."
+            echo ""
         fi
     done
 
@@ -146,13 +226,13 @@ use_existing_keys() {
     fi
 
 # Check for required files with sudo permissions
-if ! sudo test -f "$VANITY_DIR/hostname" || \
-   ! sudo test -f "$VANITY_DIR/hs_ed25519_secret_key" || \
-   ! sudo test -f "$VANITY_DIR/hs_ed25519_public_key"; then
-    echo "Error: Missing required key files in $VANITY_DIR!"
-    echo "Need: hostname, hs_ed25519_secret_key, and hs_ed25519_public_key"
-    exit 1
-fi
+    if ! sudo test -f "$VANITY_DIR/hostname" || \
+       ! sudo test -f "$VANITY_DIR/hs_ed25519_secret_key" || \
+       ! sudo test -f "$VANITY_DIR/hs_ed25519_public_key"; then
+        echo "Error: Missing required key files in $VANITY_DIR!"
+        echo "Need: hostname, hs_ed25519_secret_key, and hs_ed25519_public_key"
+        exit 1
+    fi
 
     # Double check - create hidden_service directory and set permissions
     setup_hidden_service_dir
@@ -168,7 +248,7 @@ fi
 
 
 ##########################
-## Directory scafolding ##
+## Directory scaffolding ##
 ##########################
 
 # Used in [use_existing_keys]       -- prepare directory to recieve custom vanity .onion address
@@ -193,14 +273,16 @@ setup_standard_address() {
     # Tor will automatically generate the hostname and keys when it starts
     setup_hidden_service_dir
 
-    echo -e "\nStandard address directory created."
+    echo ""
+    echo "Standard address directory created."
     echo "Tor will generate your .onion address automatically when it starts."
     echo "The address will be available after running: docker compose up -d"
+
 }
 
 
 ########################################
-## Setup the Persistant Onion Address ##
+## Setup the Persistent Onion Address ##
 ########################################
 
 #  [main] -- This is the function that runs all the .onion address key and hostname moving around
@@ -214,10 +296,10 @@ setup_vanity_address() {
         read VANITY_OPTION
         VANITY_OPTION=${VANITY_OPTION:-generate}
 
-        if [[ "$VANITY_OPTION" == "generate" ]]; then
-            generate_vanity_address
-        else
+        if [[ "$VANITY_OPTION" == "existing" ]]; then
             use_existing_keys
+        else
+            generate_vanity_address
         fi
     else
         # User chose NO to vanity address - setup standard address
@@ -305,7 +387,8 @@ generate_client_auth_keys() {
 
 #  [main] -- Setup client authentication for private .onion access
 setup_client_authentication() {
-    echo -e "\nENCRYPTION OPTION:"
+    echo ""
+    echo -e "ENCRYPTION OPTION:"
     echo -e "Do you want to enable client authentication to make your .onion site private? (y/n) [default: n]: "
     read ENABLE_AUTH
     ENABLE_AUTH=${ENABLE_AUTH:-n}
@@ -388,7 +471,12 @@ create_torrc() {
         HiddenServiceSingleHopMode 0
         HiddenServiceNonAnonymousMode 0
 
-        # Anti-fingerprinting measures
+        # DoS Protection - Proof-of-Work Defense
+        HiddenServicePoWDefensesEnabled 1
+        HiddenServicePoWQueueRate 250
+        HiddenServicePoWQueueBurst 2500
+
+        # Anti-fingerprinting
         AvoidDiskWrites 1
         DisableDebuggerAttachment 1
         ConnectionPadding 1
@@ -411,20 +499,20 @@ create_torrc() {
 
         # Additional security hardening
         StrictNodes 1
-        ControlPortWriteToFile ""
+        ControlPortWriteToFile \"\"
         CookieAuthentication 0" | sudo tee tor_config/torrc > /dev/null
 
     # Explaining what happened with torrc
         echo -e "\033[1mtorrc\033[0m created with hidden service (port ${VIRTUAL_PORT}) pointing to ${HOST_IP}:${HOST_PORT}"
     else
-        echo -e "\nUsing existing \033[1mtorrc\033[0m configuration.\n"
+        echo -e ""
+        echo -e "Using existing \033[1mtorrc\033[0m configuration."
+        echo -e ""
     fi
 }
 
-
-
 ###########################
-## Tor Adddress Printout ##
+## Tor Address Printout ##
 ###########################
 
 #  [main] -- Prints out reminders to the user on what may need to be done next and what was accomplished
@@ -504,6 +592,7 @@ main() {
     check_sudo
     create_directories
     set_permissions
+    create_gitignore
     get_network_settings
     setup_vanity_address
     setup_client_authentication
