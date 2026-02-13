@@ -4,6 +4,8 @@ services:
     image: alpine:latest
     container_name: tor-hidden-service
     restart: unless-stopped
+    # Host networking mode makes a container share the host’s IP and ports directly instead of an isolated virtual network. Be careful.
+    network_mode: "host"
     volumes:
       # Mount tor configuration directory to host
       - ./tor_config:/etc/tor
@@ -13,31 +15,43 @@ services:
       sh -c "
         # Install tor from Alpine repositories
         apk add --no-cache tor &&
-        
+
         # Ensure proper permissions for directories
         chmod 700 /var/lib/tor &&
         chown -R tor:tor /var/lib/tor &&
-        
+
         # Make sure hidden service directory exists
         mkdir -p /var/lib/tor/hidden_service &&
         chmod 700 /var/lib/tor/hidden_service &&
         chown -R tor:tor /var/lib/tor/hidden_service &&
-        
+
         # Make sure keys have proper permissions
         if [ -f /var/lib/tor/hidden_service/hs_ed25519_secret_key ]; then
           chmod 600 /var/lib/tor/hidden_service/hs_ed25519_secret_key &&
           chown tor:tor /var/lib/tor/hidden_service/hs_ed25519_secret_key;
         fi &&
-        
+
         if [ -f /var/lib/tor/hidden_service/hs_ed25519_public_key ]; then
           chmod 600 /var/lib/tor/hidden_service/hs_ed25519_public_key &&
           chown tor:tor /var/lib/tor/hidden_service/hs_ed25519_public_key;
         fi &&
-        
+
+        # Set proper permissions for authorized_clients if it exists
+        if [ -d /var/lib/tor/hidden_service/authorized_clients ]; then
+          chmod 700 /var/lib/tor/hidden_service/authorized_clients &&
+          chown -R tor:tor /var/lib/tor/hidden_service/authorized_clients &&
+          find /var/lib/tor/hidden_service/authorized_clients -type f -exec chmod 600 {} \\; &&
+          find /var/lib/tor/hidden_service/authorized_clients -type f -exec chown tor:tor {} \\;;
+        fi &&
+
+        # Ensure SOCKSPort is bound to localhost
+        sed -i '/^SOCKSPort /d' /etc/tor/torrc &&
+        echo 'SOCKSPort 127.0.0.1:9050' >> /etc/tor/torrc &&
+
         # Set proper permissions for torrc
         chown root:tor /etc/tor/torrc &&
         chmod 644 /etc/tor/torrc &&
-        
+
         # Run tor as the tor user
         su tor -s /bin/sh -c 'tor -f /etc/tor/torrc'
       "
