@@ -326,14 +326,23 @@ sudo rm tor_data/hidden_service/authorized_clients/client_name.auth
 docker compose restart
 ```
 
+
 * * *
 
-### Important Notes
+## Start up Tor with Docker Compose
 
-- Keep private keys secure
-- Share keys through encrypted channels only
-- Back up client credential files
-- Test access before distributing keys
+I have included a [docker-compose.yml](https://github.com/MarcusHoltz/tor-hidden-service/blob/main/docker-compose.yml) to get the tor service up and running.
+
+> It setups up the image, installs tor, and configures the directories.
+
+
+* * *
+
+It is basically a Dockerfile inside of a docker-compose.yml file. 
+
+I wanted to make this as simple as possible, so if you want, you can just take the commands out of the docker-compose.yml file and use them on your system - without the need of docker.
+
+Anyway, to get the generated files you made working with Tor be sure you have the [docker-compose.yml](https://github.com/MarcusHoltz/tor-hidden-service/blob/main/docker-compose.yml) in your directory with the script you just ran and  ---> run: `docker compose up -d`
 
 
 * * *
