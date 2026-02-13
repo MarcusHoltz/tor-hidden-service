@@ -113,16 +113,15 @@ generate_vanity_address() {
 
     # Double check - create hidden_service directory and set permissions
     setup_hidden_service_dir
-    
+
     # Copy the key files from the chosen onion vanity directory - this requires sudo
     sudo cp "$selected_directory/hostname" tor_data/hidden_service/
     sudo cp "$selected_directory/hs_ed25519_secret_key" tor_data/hidden_service/
     sudo cp "$selected_directory/hs_ed25519_public_key" tor_data/hidden_service/
 
     # Inform user about the keys now in production
-    echo -e "\n\n ::: DONE :::\n\n"; sleep 2;
-    clear;
-    echo -e "\nVanity address keys configured in:\n\033[1mtor_data/hidden_service/\033[0m"
+    echo -e "\n           ::: DONE :::"; sleep 1;
+    echo -e "\nVanity address keys configured in:\n./tor_data/hidden_service/\n------------------------------------"
 }
 
 
@@ -157,14 +156,14 @@ fi
 
     # Double check - create hidden_service directory and set permissions
     setup_hidden_service_dir
-    
+
     # Copy the EXISTING key files to the default 'hidden_service' directory - this requires sudo
     sudo cp "$VANITY_DIR/hostname" tor_data/hidden_service/
     sudo cp "$VANITY_DIR/hs_ed25519_secret_key" tor_data/hidden_service/
     sudo cp "$VANITY_DIR/hs_ed25519_public_key" tor_data/hidden_service/
 
     # Congratulate user about the keys now in production
-    echo -e "\n\n ::: DONE :::\n\n"; sleep 2;
+    echo -e "\n           ::: DONE :::\n"; sleep 2;
 }
 
 
@@ -174,10 +173,29 @@ fi
 
 # Used in [use_existing_keys]       -- prepare directory to recieve custom vanity .onion address
 # Used in [generate_vanity_address] -- prepare directory for an existing key and .onion address
+# Used in [setup_standard_address]  -- prepare directory for tor to auto-generate keys
 # Helper function to create and set permissions to the hidden_service directory
 setup_hidden_service_dir() {
     sudo mkdir -p tor_data/hidden_service
     sudo chmod 700 tor_data/hidden_service
+}
+
+
+##################################
+## Setup Standard Onion Address ##
+##################################
+
+# Used in [setup_vanity_address] -- Creates directory structure for Tor to auto-generate a standard address
+setup_standard_address() {
+    echo "Setting up standard (non-vanity) Tor address..."
+
+    # Create the hidden_service directory with proper permissions
+    # Tor will automatically generate the hostname and keys when it starts
+    setup_hidden_service_dir
+
+    echo -e "\nStandard address directory created."
+    echo "Tor will generate your .onion address automatically when it starts."
+    echo "The address will be available after running: docker compose up -d"
 }
 
 
@@ -201,9 +219,149 @@ setup_vanity_address() {
         else
             use_existing_keys
         fi
+    else
+        # User chose NO to vanity address - setup standard address
+        setup_standard_address
     fi
 }
 
+
+##################################
+## Client Authentication Setup  ##
+##################################
+
+# Used in [generate_client_auth_keys] -- Base32 encoding for Tor keys
+base32_encode_file() {
+    file="$1"
+    alphabet="ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"
+    pad="="
+    bits=""
+
+    for byte in $(od -An -v -t u1 "$file"); do
+        n=$byte
+        b=""
+        for i in 1 2 3 4 5 6 7 8; do
+            b="$(($n % 2))$b"
+            n=$(($n / 2))
+        done
+        bits="$bits$b"
+    done
+
+    output=""
+    while [ ${#bits} -ge 5 ]; do
+        chunk="${bits:0:5}"
+        bits="${bits:5}"
+        index=$((2#$chunk))
+        output="$output${alphabet:$index:1}"
+    done
+
+    if [ ${#bits} -gt 0 ]; then
+        while [ ${#bits} -lt 5 ]; do
+            bits="${bits}0"
+        done
+        index=$((2#$bits))
+        output="$output${alphabet:$index:1}"
+    fi
+
+    padding_needed=$(( (8 - (${#output} % 8)) % 8 ))
+    for i in $(seq 1 $padding_needed); do
+        output="$output$pad"
+    done
+
+    echo "$output"
+}
+
+# Used in [extract_and_encode_key] -- Extract binary from PEM
+pem_body_to_bin() {
+    sed '/-----BEGIN/,/-----END/!d;/-----BEGIN/d;/-----END/d' "$1" | openssl base64 -d
+}
+
+# Used in [generate_client_auth_keys] -- Extract and encode key
+extract_and_encode_key() {
+    input_pem="$1"
+    output_file="$2"
+
+    local temp_raw="tmp_${RANDOM}.raw"
+    pem_body_to_bin "$input_pem" | tail -c 32 > "$temp_raw"
+    base32_encode_file "$temp_raw" | sed 's/=//g' > "$output_file"
+    rm -f "$temp_raw"
+}
+
+# Used in [setup_client_authentication] -- Generate X25519 keypair
+generate_client_auth_keys() {
+    client_name="$1"
+
+    openssl genpkey -algorithm x25519 -out "client_${client_name}_private.pem" 2>/dev/null
+    extract_and_encode_key "client_${client_name}_private.pem" "client_${client_name}_private.key"
+
+    openssl pkey -in "client_${client_name}_private.pem" -pubout > "client_${client_name}_public.pem" 2>/dev/null
+    extract_and_encode_key "client_${client_name}_public.pem" "client_${client_name}_public.key"
+
+    public_key=$(cat "client_${client_name}_public.key")
+    private_key=$(cat "client_${client_name}_private.key")
+
+    echo "$public_key|$private_key"
+}
+
+#  [main] -- Setup client authentication for private .onion access
+setup_client_authentication() {
+    echo -e "\nENCRYPTION OPTION:"
+    echo -e "Do you want to enable client authentication to make your .onion site private? (y/n) [default: n]: "
+    read ENABLE_AUTH
+    ENABLE_AUTH=${ENABLE_AUTH:-n}
+
+    # Initialize arrays for display later
+    CLIENT_NAMES=()
+    CLIENT_KEYS=()
+
+    if [[ "$ENABLE_AUTH" == "y" || "$ENABLE_AUTH" == "Y" ]]; then
+        sudo mkdir -p tor_data/hidden_service/authorized_clients
+        sudo chmod 700 tor_data/hidden_service/authorized_clients
+
+        echo -e "How many different authorized client passwords to generate? [default: 1]: "
+        read NUM_CLIENTS
+        NUM_CLIENTS=${NUM_CLIENTS:-1}
+
+        if ! [[ "$NUM_CLIENTS" =~ ^[0-9]+$ ]] || [ "$NUM_CLIENTS" -lt 1 ]; then
+            NUM_CLIENTS=1
+        fi
+
+        if [[ -d tor_config ]]; then
+            sudo mkdir -p tor_config/client_credentials
+            sudo chmod 755 tor_config/client_credentials
+            sudo chown -R $USER:$(id -gn) tor_config/client_credentials
+        else
+            mkdir -p tor_config/client_credentials
+        fi
+
+        TEMP_DIR=$(mktemp -d)
+        trap "rm -rf $TEMP_DIR" EXIT
+
+        for ((i=1; i<=NUM_CLIENTS; i++)); do
+            echo "Enter name for client #$i [default: client$i]: "
+            read CLIENT_NAME
+            CLIENT_NAME=${CLIENT_NAME:-client$i}
+
+            cd "$TEMP_DIR"
+            keys_output=$(generate_client_auth_keys "$CLIENT_NAME")
+            public_key=$(echo "$keys_output" | cut -d'|' -f1)
+            private_key=$(echo "$keys_output" | cut -d'|' -f2)
+            cd - > /dev/null
+
+            echo "descriptor:x25519:$public_key" | sudo tee "tor_data/hidden_service/authorized_clients/${CLIENT_NAME}.auth" > /dev/null
+            sudo chmod 600 "tor_data/hidden_service/authorized_clients/${CLIENT_NAME}.auth"
+
+            echo "$private_key" > "tor_config/client_credentials/${CLIENT_NAME}.key"
+
+            CLIENT_NAMES+=("$CLIENT_NAME")
+            CLIENT_KEYS+=("$private_key")
+        done
+
+        CLIENT_AUTH_ENABLED="true"
+    else
+        CLIENT_AUTH_ENABLED="false"
+    fi
+}
 
 
 #########################
@@ -214,7 +372,7 @@ setup_vanity_address() {
 create_torrc() {
     # Create torrc configuration if it doesn't exist - EDIT YOUR YOUR TORRC HERE !!!
     if [[ ! -f tor_config/torrc ]]; then
-        echo -e "\nCreating new \033[1mtorrc\033[0m configuration...\n"
+        echo -e "Creating new \033[1mtorrc\033[0m configuration..."
         # Edit your torrc here - under this text
         echo "# Tor configuration file
         DataDirectory /var/lib/tor
@@ -227,16 +385,16 @@ create_torrc() {
         HiddenServiceVersion 3
 
         # Critical Security Additions
-        HiddenServiceSingleHopMode 0             
-        HiddenServiceNonAnonymousMode 0          
+        HiddenServiceSingleHopMode 0
+        HiddenServiceNonAnonymousMode 0
 
         # Anti-fingerprinting measures
-        AvoidDiskWrites 1                        
-        DisableDebuggerAttachment 1              
-        ConnectionPadding 1                      
-        ReducedConnectionPadding 0               
-        CircuitPadding 1                         
-        ReducedCircuitPadding 0                  
+        AvoidDiskWrites 1
+        DisableDebuggerAttachment 1
+        ConnectionPadding 1
+        ReducedConnectionPadding 0
+        CircuitPadding 1
+        ReducedCircuitPadding 0
 
         # Hardware acceleration introduces fingerprintable artifacts
         HardwareAccel 0
@@ -245,19 +403,19 @@ create_torrc() {
         Log notice stdout
 
         # Circuit reliability and security settings
-        NumEntryGuards 4                
-        HeartbeatPeriod 30 minutes      
-        NumDirectoryGuards 3            
-        MaxClientCircuitsPending 32     
-        KeepalivePeriod 60 seconds      
+        NumEntryGuards 4
+        HeartbeatPeriod 30 minutes
+        NumDirectoryGuards 3
+        MaxClientCircuitsPending 32
+        KeepalivePeriod 60 seconds
 
         # Additional security hardening
-        StrictNodes 1                   
-        ControlPortWriteToFile ""       
+        StrictNodes 1
+        ControlPortWriteToFile ""
         CookieAuthentication 0" | sudo tee tor_config/torrc > /dev/null
 
     # Explaining what happened with torrc
-        echo -e "\n\033[1mtorrc\033[0m created with hidden service (port ${VIRTUAL_PORT}) pointing to ${HOST_IP}:${HOST_PORT}\n"
+        echo -e "\033[1mtorrc\033[0m created with hidden service (port ${VIRTUAL_PORT}) pointing to ${HOST_IP}:${HOST_PORT}"
     else
         echo -e "\nUsing existing \033[1mtorrc\033[0m configuration.\n"
     fi
@@ -277,19 +435,57 @@ finalize_setup() {
 
     # Display setup information
     echo -e "tor_config:\n\033[1m$(realpath tor_config)\033[0m"
-    echo ""
     echo -e "tor_data:\n\033[1m$(realpath tor_data)\033[0m"
     echo ""
-    echo -e "#########################\nYour onion address:\n\033[31m$(sudo cat tor_data/hidden_service/hostname 2>/dev/null || echo "No hostname file found")\033[0m\n#########################"
+    echo -e "#########################\nYour onion address:"
+
+    # Check if hostname file exists
+    if sudo test -f tor_data/hidden_service/hostname; then
+        echo -e "\033[31m$(sudo cat tor_data/hidden_service/hostname)\033[0m"
+    else
+        echo -e "\033[33mAddress will be generated on first Tor startup\033[0m"
+        echo -e "\033[33mRun 'docker compose up -d' then check: sudo cat tor_data/hidden_service/hostname\033[0m"
+    fi
+
+    echo -e "#########################"
     echo ""
-    echo ""
-    echo -e "################################################\nConfirm your onion address after starting docker:\n\033[31msudo cat tor_data/hidden_service/hostname\033[0m\n################################################"
-    echo ""
+
+    # Display client authentication information if enabled
+    if [[ "$CLIENT_AUTH_ENABLED" == "true" ]]; then
+        echo "#########################"
+        echo "Client Authentication ENABLED"
+        echo "#########################"
+        echo ""
+        echo "Your .onion site is private. Only authorized clients can access it."
+        echo ""
+
+        if sudo test -f tor_data/hidden_service/hostname; then
+            ONION_ADDR=$(sudo cat tor_data/hidden_service/hostname 2>/dev/null | cut -d'.' -f1)
+            for i in "${!CLIENT_NAMES[@]}"; do
+                echo "Client: ${CLIENT_NAMES[$i]}"
+                echo "Private Key: ${CLIENT_KEYS[$i]}"
+                echo "Auth String: ${ONION_ADDR}:descriptor:x25519:${CLIENT_KEYS[$i]}"
+                echo ""
+            done
+        else
+            echo "Client credentials saved. Auth strings will be available after Tor generates your .onion address."
+            echo ""
+            for i in "${!CLIENT_NAMES[@]}"; do
+                echo "Client: ${CLIENT_NAMES[$i]}"
+                echo "Private Key: ${CLIENT_KEYS[$i]}"
+                echo ""
+            done
+        fi
+
+        echo "Keys saved in: tor_config/client_credentials/"
+        echo ""
+    fi
+
     echo " -->  Run tor with:   docker compose up -d"
 }
 
 ################################################
-## Bake your recipe - now with Docker Compose ## 
+## Bake your recipe - now with Docker Compose ##
 ################################################
 
 # #  [main] -- Run Docker Compose
@@ -311,6 +507,7 @@ main() {
     set_permissions
     get_network_settings
     setup_vanity_address
+    setup_client_authentication
     create_torrc
     finalize_setup
 }
