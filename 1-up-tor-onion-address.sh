@@ -491,9 +491,7 @@ finalize_setup() {
 # #  [main] -- Auto Run Docker Compose
 # run_docker_compose() {
 #     echo "Environment setup complete... running Docker"
-# (docker compose version >/dev/null 2>&1 && docker compose up -d) \
-#   || (docker-compose up -d 2>/dev/null \
-#       || echo -e "Docker or Docker Compose is not installed. \n\nPlease install Docker Engine and the Docker Compose plugin from:\nhttps://docs.docker.com/engine/install")
+# (docker compose version >/dev/null 2>&1 && docker compose up -d) || (docker-compose up -d 2>/dev/null || echo -e "Docker or Docker Compose is not installed. \n\nPlease install Docker Engine and the Docker Compose plugin from:\nhttps://docs.docker.com/engine/install")
 # }
 
 
