@@ -573,16 +573,40 @@ create_torrc() {
         # Force v3 onion services which have better security properties than v2
         HiddenServiceVersion 3
 
-        # Critical Security Additions
+        # Enforce full anonymity (disable single-hop and non-anonymous modes)
         HiddenServiceSingleHopMode 0
         HiddenServiceNonAnonymousMode 0
 
-        # DoS Protection - Proof-of-Work Defense
+        # DoS Protection - Proof-of-Work (client cost before service work)
+        # Adds computational cost to clients during overload.
+        # QueueRate  = sustained PoW requests/sec accepted.
+        # QueueBurst = temporary spike allowance before throttling.
         HiddenServicePoWDefensesEnabled 1
         HiddenServicePoWQueueRate 250
         HiddenServicePoWQueueBurst 2500
 
-        # Anti-fingerprinting
+        # DoS Protection - Intro Point Defense
+        # Rate-limits INTRODUCE2 requests before they reach the service.
+        # Rate  = sustained requests/sec allowed per intro point.
+        # Burst = temporary spike allowance before throttling begins.
+        # Increase if legitimate traffic is throttled under load.
+        # Decrease for stricter resistance to connection floods.
+        HiddenServiceEnableIntroDoSDefense 1
+        HiddenServiceEnableIntroDoSDefenseRate 25
+        HiddenServiceEnableIntroDoSDefenseBurst 200
+
+        # DoS Protection - Per-Circuit Stream Limits
+        # Limits concurrent streams per rendezvous circuit.
+        # Prevents a single client from monopolizing capacity.
+        # Set to expected max parallel requests per client session.
+        HiddenServiceMaxStreams 50
+
+        # On limit exceed:
+        # 0 = reject new streams only
+        # 1 = close entire circuit (forces rebuild; higher attacker cost)
+        HiddenServiceMaxStreamsCloseCircuit 1
+
+        # Anti-fingerprinting / metadata reduction
         AvoidDiskWrites 1
         DisableDebuggerAttachment 1
         ConnectionPadding 1
@@ -590,20 +614,20 @@ create_torrc() {
         CircuitPadding 1
         ReducedCircuitPadding 0
 
-        # Hardware acceleration introduces fingerprintable artifacts
+        # Disable hardware acceleration (reduces fingerprintable artifacts)
         HardwareAccel 0
 
-        # Log configuration - minimal logging for security
+        # Logging - minimal output for operational visibility
         Log notice stdout
 
-        # Circuit reliability and security settings
+        # Circuit reliability and guard behavior
         NumEntryGuards 4
-        HeartbeatPeriod 30 minutes
         NumDirectoryGuards 3
         MaxClientCircuitsPending 32
         KeepalivePeriod 60 seconds
+        HeartbeatPeriod 30 minutes
 
-        # Additional security hardening
+        # Additional hardening
         StrictNodes 1
         ControlPortWriteToFile \"\"
         CookieAuthentication 0" | sudo tee tor_config/torrc > /dev/null
