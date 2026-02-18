@@ -587,13 +587,13 @@ create_torrc() {
 
         # DoS Protection - Intro Point Defense
         # Rate-limits INTRODUCE2 requests before they reach the service.
+        # Increase if legitimate traffic is throttled under load.
+        # If either value is 0 it is treated as infinite and disables the defense.
         # Rate  = sustained requests/sec allowed per intro point.
         # Burst = temporary spike allowance before throttling begins.
-        # Increase if legitimate traffic is throttled under load.
-        # Decrease for stricter resistance to connection floods.
         HiddenServiceEnableIntroDoSDefense 1
-        HiddenServiceEnableIntroDoSDefenseRate 25
-        HiddenServiceEnableIntroDoSDefenseBurst 200
+        HiddenServiceEnableIntroDoSRatePerSec 25
+        HiddenServiceEnableIntroDoSBurstPerSec 200
 
         # DoS Protection - Per-Circuit Stream Limits
         # Limits concurrent streams per rendezvous circuit.
